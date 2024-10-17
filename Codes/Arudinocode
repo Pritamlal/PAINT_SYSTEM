@@ -1,0 +1,161 @@
+#include "BluetoothSerial.h"
+
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run make menuconfig to and enable it
+#endif
+
+BluetoothSerial SerialBT;
+
+const int motor1Pin1 = 26;
+const int motor1Pin2 = 27;
+const int motor2Pin1 = 13;
+const int motor2Pin2 = 12;
+const int motor3Pin1 = 25;
+const int motor3Pin2 = 33;
+
+bool up = false;
+bool down = false;
+bool right = false;
+bool left = false;
+bool o = false;
+bool c = false;
+
+void setup() {
+  Serial.begin(115200);
+  SerialBT.begin();
+  closespray();
+  Serial.println("Bluetooth Started! Ready to pair...");
+
+  pinMode(motor1Pin1, OUTPUT);
+  pinMode(motor1Pin2, OUTPUT);
+  pinMode(motor2Pin1, OUTPUT);
+  pinMode(motor2Pin2, OUTPUT);
+  pinMode(motor3Pin1, OUTPUT);
+  pinMode(motor3Pin2, OUTPUT);   
+
+  digitalWrite(motor1Pin1, LOW);
+  digitalWrite(motor1Pin2, LOW);
+  digitalWrite(motor2Pin1, LOW);
+  digitalWrite(motor2Pin2, LOW);
+  digitalWrite(motor3Pin1, LOW);
+  digitalWrite(motor3Pin2, LOW);
+
+  
+}
+
+void moveup() {
+
+  Serial.println("\nMoving Up");
+  SerialBT.print("Moving Up\n");
+  digitalWrite(motor1Pin1, HIGH);
+  digitalWrite(motor1Pin2, LOW);
+  up = true;
+  down = false;
+}
+
+void movedown() {
+
+  Serial.println("\nMoving Down");
+  SerialBT.print("Moving Down\n");
+  digitalWrite(motor1Pin1, LOW);
+  digitalWrite(motor1Pin2, HIGH);
+  down = true;
+  up = false;
+}
+
+void moveright() {
+
+  Serial.println("\nMoving Right");
+  SerialBT.print("Moving Right\n");
+  digitalWrite(motor2Pin1, LOW);
+  digitalWrite(motor2Pin2, HIGH);
+  right = true;
+  left = false;
+}
+
+void moveleft() {
+
+  Serial.println("\nMoving left");
+  SerialBT.print("Moving Left\n");
+  digitalWrite(motor2Pin1, HIGH);
+  digitalWrite(motor2Pin2, LOW);
+  left = true;
+  right = false;
+}
+
+void stop() {
+
+  Serial.println("\nStopped");
+  SerialBT.print("Stopped\n");
+  digitalWrite(motor1Pin1, LOW);
+  digitalWrite(motor1Pin2, LOW);
+  digitalWrite(motor2Pin1, LOW);
+  digitalWrite(motor2Pin2, LOW);
+  left = false;
+  right = false;
+  up = false;
+  down = false;
+}
+
+void openspray() {
+
+  digitalWrite(motor3Pin1, HIGH);
+  digitalWrite(motor3Pin2, LOW);
+  Serial.println("\nSpraying");
+  SerialBT.print("Spraying\n");
+  o = true;
+  c = false;
+}
+
+void closespray() {
+  digitalWrite(motor3Pin1, LOW);
+  digitalWrite(motor3Pin2, LOW);
+  Serial.println("\Not Spraying");
+  SerialBT.print("Not Spraying\n");
+  c = true;
+  o = false;
+}
+
+void loop() {
+
+  if (SerialBT.available()) {
+    char data = SerialBT.read();
+
+    if (data == 'u') {
+      if (!up) {
+        moveup();
+      }
+    }
+
+    if (data == 'd') {
+      if (!down) {
+        movedown();
+      }
+    }
+
+    if (data == 'r') {
+      if (!right) {
+        moveright();
+      }
+    }
+
+    if (data == 'l') {
+      if (!left) {
+        moveleft();
+      }
+    }
+
+    if (data == 's') {
+      stop();
+    }
+
+    if (data == 'o' && !o) {
+      openspray();
+    }
+
+    if (data == 'c' && !c) {
+      closespray();
+    }
+  }
+  delay(20);
+}

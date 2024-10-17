@@ -1,0 +1,242 @@
+package com.example.proj;
+
+// Import necessary packages
+import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.UUID;
+
+public class MainActivity extends AppCompatActivity {
+
+    // Bluetooth-related variables
+    private BluetoothAdapter bluetoothAdapter; // Adapter for managing Bluetooth
+    private BluetoothSocket bluetoothSocket; // Socket for connection
+    private BluetoothDevice bluetoothDevice; // Device to connect to
+    private OutputStream outputStream; // Output stream to send data
+    private InputStream inputStream; // Input stream to receive data
+
+    // UI elements
+    private EditText editTextInput; // Input field for user data
+    private TextView textViewOutput; // Text view for displaying messages
+    private Button buttonConnect, buttonSend, buttonUp, buttonDown, buttonLeft, buttonRight; // Action buttons
+    private Button buttonExtra1, buttonExtra2, buttonExtra3; // Additional buttons
+    private Spinner spinnerDevices; // Spinner for selecting paired devices
+
+    // Standard UUID for SPP (Serial Port Profile)
+    private final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+    // Adapter and list to manage paired devices
+    private ArrayAdapter<String> deviceListAdapter; // Adapter for displaying device list
+    private ArrayList<BluetoothDevice> pairedDevicesList; // List to store paired devices
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main); // Set the layout for the activity
+
+        // Initialize UI elements
+        spinnerDevices = findViewById(R.id.spinner_devices);
+        editTextInput = findViewById(R.id.editText_input);
+        textViewOutput = findViewById(R.id.textView_output);
+        buttonConnect = findViewById(R.id.button_connect);
+        buttonSend = findViewById(R.id.button_send);
+        buttonUp = findViewById(R.id.button_up);
+        buttonDown = findViewById(R.id.button_down);
+        buttonLeft = findViewById(R.id.button_left);
+        buttonRight = findViewById(R.id.button_right);
+        buttonExtra1 = findViewById(R.id.button_extra_1);
+        buttonExtra2 = findViewById(R.id.button_extra_2);
+        buttonExtra3 = findViewById(R.id.button_extra_3);
+
+        // Initialize Bluetooth Adapter
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter(); // Get the default Bluetooth adapter
+        pairedDevicesList = new ArrayList<>(); // Initialize the paired devices list
+        deviceListAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item); // Adapter for spinner
+        spinnerDevices.setAdapter(deviceListAdapter); // Set the adapter to the spinner
+
+        // List paired devices
+        listPairedDevices();
+
+        // Button listeners for various actions
+        buttonConnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                connectToSelectedDevice(); // Connect to the selected Bluetooth device
+            }
+        });
+
+        buttonSend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData(editTextInput.getText().toString()); // Send data from input field
+            }
+        });
+
+        buttonUp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData("u"); // Send "u" command for up action
+            }
+        });
+
+        buttonDown.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData("d"); // Send "d" command for down action
+            }
+        });
+
+        buttonLeft.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData("l"); // Send "l" command for left action
+            }
+        });
+
+        buttonRight.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData("r"); // Send "r" command for right action
+            }
+        });
+
+        // Additional button listeners for extra functionality
+        buttonExtra1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData("o"); // Send "o" command for extra action 1
+            }
+        });
+
+        buttonExtra2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData("s"); // Send "s" command for extra action 2
+            }
+        });
+
+        buttonExtra3.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendData("c"); // Send "c" command for extra action 3
+            }
+        });
+    }
+
+    // Method to list paired Bluetooth devices
+    private void listPairedDevices() {
+        // Check for Bluetooth permission
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            // If permission is not granted, exit the method
+            return;
+        }
+        // Get the set of paired devices
+        Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+        // Check if there are any paired devices
+        if (pairedDevices.size() > 0) {
+            for (BluetoothDevice device : pairedDevices) {
+                pairedDevicesList.add(device); // Add device to the list
+                deviceListAdapter.add(device.getName() + "\n" + device.getAddress()); // Add device name and address to the adapter
+            }
+        } else {
+            deviceListAdapter.add("No paired devices found."); // Message if no paired devices
+        }
+    }
+
+    // Method to connect to the selected Bluetooth device
+    private void connectToSelectedDevice() {
+        int selectedIndex = spinnerDevices.getSelectedItemPosition(); // Get selected device index
+        // Check if no device is selected or if the paired devices list is empty
+        if (selectedIndex == -1 || pairedDevicesList.isEmpty()) {
+            textViewOutput.setText("No device selected."); // Display message
+            return; // Exit method
+        }
+
+        bluetoothDevice = pairedDevicesList.get(selectedIndex); // Get the selected device
+
+        try {
+            // Check for Bluetooth permission again
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                return; // Exit method if permission not granted
+            }
+            bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(MY_UUID); // Create a Bluetooth socket
+            bluetoothSocket.connect(); // Connect to the device
+            outputStream = bluetoothSocket.getOutputStream(); // Get the output stream
+            inputStream = bluetoothSocket.getInputStream(); // Get the input stream
+            textViewOutput.setText("Connected to " + bluetoothDevice.getName()); // Display connected device name
+            listenForData(); // Start listening for incoming data
+        } catch (IOException e) {
+            textViewOutput.setText("Connection failed: " + e.getMessage()); // Display error message if connection fails
+        }
+    }
+
+    // Method to send data to the Bluetooth device
+    private void sendData(String data) {
+        if (outputStream != null) { // Check if the output stream is initialized
+            try {
+                outputStream.write(data.getBytes()); // Send data as bytes
+                textViewOutput.append("\nSent: " + data); // Display sent data
+            } catch (IOException e) {
+                textViewOutput.setText("Error sending data: " + e.getMessage()); // Display error if sending fails
+            }
+        }
+    }
+
+    // Method to listen for incoming data from the Bluetooth device
+    private void listenForData() {
+        new Thread(new Runnable() {
+            public void run() {
+                byte[] buffer = new byte[1024]; // Buffer for incoming data
+                int bytes; // Number of bytes read
+
+                while (true) { // Continuous loop to listen for data
+                    try {
+                        if (inputStream.available() > 0) { // Check if data is available
+                            bytes = inputStream.read(buffer); // Read data into buffer
+                            final String incomingMessage = new String(buffer, 0, bytes); // Convert bytes to String
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textViewOutput.append("\nReceived: " + incomingMessage); // Display received data
+                                }
+                            });
+                        }
+                    } catch (IOException e) {
+                        textViewOutput.setText("Error receiving data: " + e.getMessage()); // Display error if receiving fails
+                        break; // Exit loop on error
+                    }
+                }
+            }
+        }).start(); // Start the thread for listening
+    }
+
+    // Cleanup method to close the Bluetooth socket when the activity is destroyed
+    @Override
+    protected void onDestroy() {
+        super.onDestroy(); // Call superclass method
+       try {
+            if (bluetoothSocket != null) {
+                bluetoothSocket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
